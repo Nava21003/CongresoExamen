@@ -5,7 +5,6 @@ import { FaTwitter, FaEnvelope, FaSuitcase, FaBuilding } from "react-icons/fa";
 
 const API_BASE_URL = "https://congreso-api-node.onrender.com";
 
-// Estilos para la tarjeta giratoria (sin caracteres invisibles)
 const flipCardStyles = `
   .flip-card-container {
     perspective: 1000px;

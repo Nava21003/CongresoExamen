@@ -13,12 +13,8 @@ import {
 import { FaTwitter, FaSearch, FaUserAlt } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 
-// 🚨 REEMPLAZA ESTA URL CON LA QUE TE DIO RENDER
 const API_BASE_URL = "https://congreso-api-node.onrender.com";
 const API_LISTADO_URL = `${API_BASE_URL}/api/listado`;
-
-// Define el tipo de dato que esperamos (opcional pero bueno para la claridad)
-// type Participante = { id: number, nombre: string, usuarioTwitter: string, ocupacion: string, idAvatar: number };
 
 const Participantes = () => {
   const [participantes, setParticipantes] = useState([]);
@@ -27,13 +23,11 @@ const Participantes = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // 1. Lógica para cargar los datos de la API
   const fetchParticipantes = async (query = "") => {
     setLoading(true);
     setError(null);
     let url = API_LISTADO_URL;
 
-    // Si hay un término de búsqueda, añade el parámetro ?q=
     if (query) {
       url = `${API_LISTADO_URL}?q=${encodeURIComponent(query)}`;
     }
@@ -55,23 +49,19 @@ const Participantes = () => {
     }
   };
 
-  // Carga los datos la primera vez que se monta el componente
   useEffect(() => {
     fetchParticipantes();
   }, []);
 
-  // Maneja la búsqueda cuando el usuario presiona Enter o el botón
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     fetchParticipantes(searchTerm);
   };
 
-  // Función para manejar la redirección al gafete individual
   const handleGafeteClick = (id) => {
     navigate(`/gafete/${id}`);
   };
 
-  // Componente de Tarjeta de Participante
   const ParticipanteCard = ({
     id,
     nombre,
@@ -85,9 +75,8 @@ const Participantes = () => {
       style={{ padding: "14px" }}
     >
       <Card.Body className="d-flex align-items-center">
-        {/* Avatar clickeable para ver el gafete */}
         <img
-          src={`https://i.pravatar.cc/150?img=${idAvatar}`} // Usamos idAvatar del API
+          src={`https://i.pravatar.cc/150?img=${idAvatar}`}
           alt={nombre}
           className="rounded-circle me-3"
           style={{
@@ -97,7 +86,7 @@ const Participantes = () => {
             border: "3px solid #0d6efd",
             cursor: "pointer",
           }}
-          onClick={() => handleGafeteClick(id)} // Redirecciona a /gafete/:id
+          onClick={() => handleGafeteClick(id)}
         />
 
         <div className="text-start flex-grow-1">
@@ -126,7 +115,6 @@ const Participantes = () => {
           <Col>
             <h2 className="fw-bold text-primary">Asistentes Registrados</h2>
 
-            {/* Formulario de Búsqueda */}
             <Form onSubmit={handleSearchSubmit}>
               <InputGroup
                 className="mx-auto mt-3"
@@ -146,14 +134,9 @@ const Participantes = () => {
                 </Button>
               </InputGroup>
             </Form>
-
-            <p className="text-muted small mt-2">
-              * Datos cargados desde: **{API_BASE_URL}**
-            </p>
           </Col>
         </Row>
 
-        {/* Mensajes de Estado */}
         {error && (
           <Alert variant="danger" className="text-center">
             {error}
@@ -167,17 +150,11 @@ const Participantes = () => {
           </div>
         )}
 
-        {/* Listado de Participantes */}
         <Row className="justify-content-center">
           <Col md={8} lg={6}>
             {!loading && participantes.length > 0
               ? participantes.map((p) => (
-                  <ParticipanteCard
-                    key={p.id}
-                    {...p}
-                    // El idAvatar ahora viene del API, y lo usamos para la URL de pravatar
-                    idAvatar={p.idAvatar}
-                  />
+                  <ParticipanteCard key={p.id} {...p} idAvatar={p.idAvatar} />
                 ))
               : !loading &&
                 !error && (
