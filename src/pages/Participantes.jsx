@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Container,
   Row,
@@ -7,75 +7,87 @@ import {
   Form,
   InputGroup,
   Button,
+  Alert,
+  Spinner,
 } from "react-bootstrap";
-import { FaTwitter, FaSearch } from "react-icons/fa";
-import { useNavigate } from "react-router-dom"; // 👈 Importamos useNavigate
+import { FaTwitter, FaSearch, FaUserAlt } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
-// Datos de ejemplo para simular la lista de participantes (Mantener igual)
-const participantesData = [
-  // ... (tus datos de participantes)
-  {
-    id: 1,
-    nombre: "Juliana Rubio",
-    usuarioTwitter: "@JRubio",
-    ocupacion: "Desarrolladora de Software",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    email: "juliana.r@example.com", // Añadir email para el gafete
-  },
-  {
-    id: 2,
-    nombre: "Raúl Medina",
-    usuarioTwitter: "@RoulMedina",
-    ocupacion: "Ingeniero Front-End",
-    avatar: "https://i.pravatar.cc/150?img=2",
-    email: "raul.m@example.com",
-  },
-  {
-    id: 3,
-    nombre: "Carlos Andrade",
-    usuarioTwitter: "@CAndrode",
-    ocupacion: "Desarrollador Web Full Stack",
-    avatar: "https://i.pravatar.cc/150?img=3",
-    email: "carlos.a@example.com",
-  },
-  {
-    id: 4,
-    nombre: "Ana Gómez",
-    usuarioTwitter: "@AGomezDev",
-    ocupacion: "Diseñadora UX/UI",
-    avatar: "https://i.pravatar.cc/150?img=4",
-    email: "ana.g@example.com",
-  },
-];
+// 🚨 REEMPLAZA ESTA URL CON LA QUE TE DIO RENDER
+const API_BASE_URL = "https://congreso-api-node.onrender.com";
+const API_LISTADO_URL = `${API_BASE_URL}/api/listado`;
+
+// Define el tipo de dato que esperamos (opcional pero bueno para la claridad)
+// type Participante = { id: number, nombre: string, usuarioTwitter: string, ocupacion: string, idAvatar: number };
 
 const Participantes = () => {
+  const [participantes, setParticipantes] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const navigate = useNavigate(); // 👈 Inicializamos el hook de navegación
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
-  const filteredParticipantes = participantesData.filter((participante) =>
-    participante.nombre.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 1. Lógica para cargar los datos de la API
+  const fetchParticipantes = async (query = "") => {
+    setLoading(true);
+    setError(null);
+    let url = API_LISTADO_URL;
 
-  // Función para manejar la redirección
-  const handleAvatarClick = (id) => {
+    // Si hay un término de búsqueda, añade el parámetro ?q=
+    if (query) {
+      url = `${API_LISTADO_URL}?q=${encodeURIComponent(query)}`;
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(
+          `Error ${response.status}: No se pudo obtener el listado.`
+        );
+      }
+      const data = await response.json();
+      setParticipantes(data);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("Fallo al conectar con el servidor de participantes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Carga los datos la primera vez que se monta el componente
+  useEffect(() => {
+    fetchParticipantes();
+  }, []);
+
+  // Maneja la búsqueda cuando el usuario presiona Enter o el botón
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    fetchParticipantes(searchTerm);
+  };
+
+  // Función para manejar la redirección al gafete individual
+  const handleGafeteClick = (id) => {
     navigate(`/gafete/${id}`);
   };
 
+  // Componente de Tarjeta de Participante
   const ParticipanteCard = ({
     id,
     nombre,
+    apellidos,
     usuarioTwitter,
     ocupacion,
-    avatar,
+    idAvatar,
   }) => (
     <Card
-      className="shadow border-0 mb-3 rounded-4"
+      className="shadow border-0 mb-3 rounded-4 participante-card"
       style={{ padding: "14px" }}
     >
       <Card.Body className="d-flex align-items-center">
-        {/* Hacemos el avatar clickeable y agregamos el cursor: pointer */}
+        {/* Avatar clickeable para ver el gafete */}
         <img
-          src={avatar}
+          src={`https://i.pravatar.cc/150?img=${idAvatar}`} // Usamos idAvatar del API
           alt={nombre}
           className="rounded-circle me-3"
           style={{
@@ -83,13 +95,13 @@ const Participantes = () => {
             height: "70px",
             objectFit: "cover",
             border: "3px solid #0d6efd",
-            cursor: "pointer", // 👈 Indicador visual de que es clickeable
+            cursor: "pointer",
           }}
-          onClick={() => handleAvatarClick(id)} // 👈 Agregamos el evento de click
+          onClick={() => handleGafeteClick(id)} // Redirecciona a /gafete/:id
         />
 
         <div className="text-start flex-grow-1">
-          <h5 className="mb-1 fw-bold">{nombre}</h5>
+          <h5 className="mb-1 fw-bold">{`${nombre} ${apellidos || ""}`}</h5>
           <p className="mb-1 text-muted small">
             <FaTwitter className="text-info me-1" />
             <a
@@ -107,44 +119,73 @@ const Participantes = () => {
     </Card>
   );
 
-  // ... (el resto del componente Participantes se mantiene igual)
   return (
     <div style={{ backgroundColor: "#f5f7fb", minHeight: "100vh" }}>
       <Container className="py-5">
-        {/* ... (código de búsqueda y título) ... */}
         <Row className="mb-4 text-center">
           <Col>
             <h2 className="fw-bold text-primary">Asistentes Registrados</h2>
 
-            <InputGroup className="mx-auto mt-3" style={{ maxWidth: "450px" }}>
-              <Form.Control
-                placeholder="Buscar por nombre..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Button variant="primary">
-                <FaSearch />
-              </Button>
-            </InputGroup>
+            {/* Formulario de Búsqueda */}
+            <Form onSubmit={handleSearchSubmit}>
+              <InputGroup
+                className="mx-auto mt-3"
+                style={{ maxWidth: "450px" }}
+              >
+                <Form.Control
+                  placeholder="Buscar por nombre, apellido u ocupación..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Button variant="primary" type="submit">
+                  {loading ? (
+                    <Spinner animation="border" size="sm" />
+                  ) : (
+                    <FaSearch />
+                  )}
+                </Button>
+              </InputGroup>
+            </Form>
 
             <p className="text-muted small mt-2">
-              * Haz clic en el **avatar** para ver el gafete individual.
+              * Datos cargados desde: **{API_BASE_URL}**
             </p>
           </Col>
         </Row>
 
+        {/* Mensajes de Estado */}
+        {error && (
+          <Alert variant="danger" className="text-center">
+            {error}
+          </Alert>
+        )}
+
+        {loading && participantes.length === 0 && !error && (
+          <div className="text-center my-5">
+            <Spinner animation="border" variant="primary" />
+            <p className="mt-2 text-primary">Cargando participantes...</p>
+          </div>
+        )}
+
+        {/* Listado de Participantes */}
         <Row className="justify-content-center">
           <Col md={8} lg={6}>
-            {filteredParticipantes.length > 0 ? (
-              // Pasamos el ID al ParticipanteCard
-              filteredParticipantes.map((p) => (
-                <ParticipanteCard key={p.id} {...p} />
-              ))
-            ) : (
-              <p className="text-center text-danger fw-bold">
-                No se encontraron participantes.
-              </p>
-            )}
+            {!loading && participantes.length > 0
+              ? participantes.map((p) => (
+                  <ParticipanteCard
+                    key={p.id}
+                    {...p}
+                    // El idAvatar ahora viene del API, y lo usamos para la URL de pravatar
+                    idAvatar={p.idAvatar}
+                  />
+                ))
+              : !loading &&
+                !error && (
+                  <p className="text-center text-danger fw-bold">
+                    <FaUserAlt className="me-2" /> No se encontraron
+                    participantes.
+                  </p>
+                )}
           </Col>
         </Row>
       </Container>

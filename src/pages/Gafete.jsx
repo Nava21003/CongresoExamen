@@ -1,49 +1,11 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, Navigate } from "react-router-dom";
-import { Container, Row, Col, Card } from "react-bootstrap";
+import { Container, Spinner, Alert } from "react-bootstrap";
 import { FaTwitter, FaEnvelope, FaSuitcase, FaBuilding } from "react-icons/fa";
 
-// NOTA: Es esencial que la data aquí sea la misma que en Participantes para que funcione la búsqueda.
-const participantesData = [
-  {
-    id: 1,
-    nombre: "Juliana Rubio",
-    apellidos: "Gómez",
-    usuarioTwitter: "@JRubio",
-    ocupacion: "Desarrolladora de Software",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    email: "juliana.r@example.com",
-  },
-  {
-    id: 2,
-    nombre: "Raúl",
-    apellidos: "Medina",
-    usuarioTwitter: "@RoulMedina",
-    ocupacion: "Ingeniero Front-End",
-    avatar: "https://i.pravatar.cc/150?img=2",
-    email: "raul.m@example.com",
-  },
-  {
-    id: 3,
-    nombre: "Carlos",
-    apellidos: "Andrade",
-    usuarioTwitter: "@CAndrode",
-    ocupacion: "Desarrollador Web Full Stack",
-    avatar: "https://i.pravatar.cc/150?img=3",
-    email: "carlos.a@example.com",
-  },
-  {
-    id: 4,
-    nombre: "Ana",
-    apellidos: "Gómez",
-    usuarioTwitter: "@AGomezDev",
-    ocupacion: "Diseñadora UX/UI",
-    avatar: "https://i.pravatar.cc/150?img=4",
-    email: "ana.g@example.com",
-  },
-];
+const API_BASE_URL = "https://congreso-api-node.onrender.com";
 
-// Estilos necesarios para la tarjeta giratoria (Flip Card)
+// Estilos para la tarjeta giratoria (sin caracteres invisibles)
 const flipCardStyles = `
   .flip-card-container {
     perspective: 1000px;
@@ -59,6 +21,7 @@ const flipCardStyles = `
     transition: transform 0.8s;
     transform-style: preserve-3d;
     box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    cursor: pointer;
   }
   .flip-card.flipped {
     transform: rotateY(180deg);
@@ -67,17 +30,16 @@ const flipCardStyles = `
     position: absolute;
     width: 100%;
     height: 100%;
-    -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
     border-radius: 1rem;
     padding: 2rem;
   }
   .flip-card-front {
-    background-color: #0d6efd; /* Azul Primario */
+    background-color: #0d6efd;
     color: white;
   }
   .flip-card-back {
-    background-color: #f8f9fa; /* Gris Claro */
+    background-color: #f8f9fa;
     color: #212529;
     transform: rotateY(180deg);
     border: 1px solid #dee2e6;
@@ -85,96 +47,132 @@ const flipCardStyles = `
 `;
 
 const Gafete = () => {
-  const { id } = useParams(); // Obtiene el parámetro ID de la URL
-  const [isFlipped, setIsFlipped] = React.useState(false);
+  const { id } = useParams();
+  const [participante, setParticipante] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isFlipped, setIsFlipped] = useState(false);
 
-  // Busca el participante
-  const participante = participantesData.find((p) => p.id === parseInt(id));
+  useEffect(() => {
+    const fetchParticipante = async () => {
+      setLoading(true);
+      setError(null);
 
-  if (!participante) {
-    // Si no se encuentra el ID, redirige a la lista de participantes
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/participante/${id}`);
+
+        if (response.status === 404) {
+          setParticipante(undefined);
+          return;
+        }
+
+        if (!response.ok)
+          throw new Error(`Error en el servidor: ${response.status}`);
+
+        const data = await response.json();
+        setParticipante(data);
+      } catch (err) {
+        console.error("Error al cargar gafete:", err);
+        setError("No se pudo obtener la información del participante.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchParticipante();
+  }, [id]);
+
+  if (loading)
+    return (
+      <Container className="py-5 text-center">
+        <Spinner animation="border" className="mb-3" />
+        <h2>Cargando Gafete...</h2>
+      </Container>
+    );
+
+  if (error)
+    return (
+      <Container className="py-5 text-center">
+        <Alert variant="danger">{error}</Alert>
+      </Container>
+    );
+
+  if (participante === undefined)
     return <Navigate to="/participantes" replace />;
-  }
 
-  const { nombre, apellidos, email, usuarioTwitter, ocupacion, avatar } =
+  const { nombre, apellidos, email, usuarioTwitter, ocupacion, idAvatar } =
     participante;
 
   return (
     <Container className="py-5 text-center">
-      <style>{flipCardStyles}</style> {/* Insertamos los estilos */}
-      <h2 className="mb-4 fw-bold">Gafete de {nombre}</h2>
-      <p className="text-muted">
-        Haz clic en la tarjeta para ver la otra cara.
-      </p>
+      <style>{flipCardStyles}</style>
+
+      <h2 className="fw-bold mb-4">Gafete de {nombre}</h2>
+      <p className="text-muted">Haz clic en la tarjeta para voltearla.</p>
+
       <div
-        className={`flip-card-container`}
-        onClick={() => setIsFlipped(!isFlipped)} // Alterna el estado de giro
+        className="flip-card-container"
+        onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`flip-card ${isFlipped ? "flipped" : ""}`}>
-          {/* Cara Frontal del Gafete */}
+          {/* FRONT */}
           <div className="flip-card-front d-flex flex-column justify-content-center align-items-center">
-            <h1 className="display-4 fw-bolder mb-3 text-white">
-              CONGRESO UTL
-            </h1>
+            <h1 className="mb-3 fw-bolder text-white">CONGRESO UTL</h1>
             <img
-              src={avatar}
-              alt={nombre}
-              className="rounded-circle mb-3 shadow-lg"
+              src={`https://i.pravatar.cc/200?img=${idAvatar}`}
+              className="rounded-circle mb-3 shadow"
+              alt="avatar"
               style={{
-                width: "150px",
-                height: "150px",
-                objectFit: "cover",
+                width: "160px",
+                height: "160px",
                 border: "5px solid white",
+                objectFit: "cover",
               }}
             />
-            <h3 className="fw-bolder mb-1 text-uppercase">{nombre}</h3>
-            <h3 className="fw-bolder mb-4 text-uppercase">{apellidos}</h3>
-            <span className="badge bg-light text-primary fs-5 py-2 px-4 shadow-sm">
+            <h3 className="fw-bold text-uppercase mb-1">{nombre}</h3>
+            <h3 className="fw-bold text-uppercase mb-4">{apellidos}</h3>
+            <span className="badge bg-light text-primary px-3 py-2 shadow-sm fs-6">
               {ocupacion}
             </span>
           </div>
 
-          {/* Cara Trasera del Gafete */}
-          <div className="flip-card-back d-flex flex-column justify-content-center text-start">
-            <h4 className="text-center mb-4 text-dark fw-bold">
-              DATOS DE CONTACTO
-            </h4>
+          {/* BACK */}
+          <div className="flip-card-back text-start d-flex flex-column justify-content-center">
+            <h4 className="fw-bold text-center mb-4">DATOS DE CONTACTO</h4>
 
-            <div className="d-flex align-items-center mb-3">
+            <div className="d-flex mb-3">
               <FaBuilding className="me-3 fs-4 text-secondary" />
               <div>
-                <p className="mb-0 small text-muted">Evento</p>
-                <p className="mb-0 fw-bold">
-                  Congreso de Tecnologías de la Información
-                </p>
+                <small className="text-muted">Evento</small>
+                <p className="fw-bold mb-0">Congreso de Tecnologías UTL</p>
               </div>
             </div>
 
-            <div className="d-flex align-items-center mb-3">
+            <div className="d-flex mb-3">
               <FaSuitcase className="me-3 fs-4 text-secondary" />
               <div>
-                <p className="mb-0 small text-muted">Ocupación</p>
-                <p className="mb-0 fw-bold">{ocupacion}</p>
+                <small className="text-muted">Ocupación</small>
+                <p className="fw-bold mb-0">{ocupacion}</p>
               </div>
             </div>
 
-            <div className="d-flex align-items-center mb-3">
+            <div className="d-flex mb-3">
               <FaEnvelope className="me-3 fs-4 text-secondary" />
               <div>
-                <p className="mb-0 small text-muted">Email</p>
-                <p className="mb-0 fw-bold">{email}</p>
+                <small className="text-muted">Email</small>
+                <p className="fw-bold mb-0">{email}</p>
               </div>
             </div>
 
-            <div className="d-flex align-items-center mb-3">
+            <div className="d-flex mb-3">
               <FaTwitter className="me-3 fs-4 text-info" />
               <div>
-                <p className="mb-0 small text-muted">Twitter</p>
-                <p className="mb-0 fw-bold text-info">{usuarioTwitter}</p>
+                <small className="text-muted">Twitter</small>
+                <p className="fw-bold text-info mb-0">{usuarioTwitter}</p>
               </div>
             </div>
 
-            <p className="text-center mt-4 small text-muted">
+            <p className="text-center mt-3 small text-muted">
               #CongresoUTL2025
             </p>
           </div>

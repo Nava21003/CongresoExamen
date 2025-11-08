@@ -1,10 +1,28 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Container, Row, Col, Form, Button, InputGroup } from "react-bootstrap";
-import { FaUser, FaTwitter, FaSuitcase, FaThumbsUp } from "react-icons/fa";
+import {
+  Container,
+  Row,
+  Col,
+  Form,
+  Button,
+  InputGroup,
+  Alert,
+  Spinner,
+} from "react-bootstrap";
+import {
+  FaUser,
+  FaTwitter,
+  FaSuitcase,
+  FaThumbsUp,
+  FaEnvelope,
+} from "react-icons/fa";
+
+const API_REGISTRO_URL = "https://congreso-api-node.onrender.com/api/registro";
 
 const Registro = () => {
   const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     nombre: "",
     apellidos: "",
@@ -15,6 +33,9 @@ const Registro = () => {
     aceptaTerminos: false,
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -23,12 +44,42 @@ const Registro = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Datos del registro:", formData);
+    setError(null);
+    setLoading(true);
 
-    alert(`¡${formData.nombre} registrado con éxito!`);
-    navigate("/participantes");
+    try {
+      const dataToSend = {
+        nombre: formData.nombre,
+        apellidos: formData.apellidos,
+        email: formData.email,
+        usuarioTwitter: formData.twitter,
+        ocupacion: formData.ocupacion,
+        idAvatar: parseInt(formData.avatar),
+      };
+
+      const response = await fetch(API_REGISTRO_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSend),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Error al registrar");
+      }
+
+      const result = await response.json();
+      alert(`¡${result.nombre} registrado con éxito! ID: ${result.id}`);
+
+      navigate("/participantes");
+    } catch (err) {
+      console.error("Error al registrar:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const AvatarOption = ({ id, currentAvatar, onChange }) => (
@@ -69,11 +120,16 @@ const Registro = () => {
             Registro de Participante
           </h2>
 
+          {error && (
+            <Alert variant="danger" className="text-center">
+              {error}
+            </Alert>
+          )}
+
           <Form
             onSubmit={handleSubmit}
             className="p-4 border rounded shadow-lg bg-light"
           >
-            {/* Nombre */}
             <Form.Group className="mb-3">
               <Form.Label>Nombre</Form.Label>
               <InputGroup>
@@ -90,7 +146,6 @@ const Registro = () => {
               </InputGroup>
             </Form.Group>
 
-            {/* Apellidos */}
             <Form.Group className="mb-3">
               <Form.Label>Apellidos</Form.Label>
               <Form.Control
@@ -102,19 +157,22 @@ const Registro = () => {
               />
             </Form.Group>
 
-            {/* Email */}
             <Form.Group className="mb-3">
               <Form.Label>Email</Form.Label>
-              <Form.Control
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-              />
+              <InputGroup>
+                <InputGroup.Text>
+                  <FaEnvelope />
+                </InputGroup.Text>
+                <Form.Control
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  required
+                />
+              </InputGroup>
             </Form.Group>
 
-            {/* Twitter */}
             <Form.Group className="mb-3">
               <Form.Label>Usuario en Twitter</Form.Label>
               <InputGroup>
@@ -132,7 +190,6 @@ const Registro = () => {
               </InputGroup>
             </Form.Group>
 
-            {/* Ocupación */}
             <Form.Group className="mb-4">
               <Form.Label>Ocupación</Form.Label>
               <InputGroup>
@@ -149,9 +206,8 @@ const Registro = () => {
               </InputGroup>
             </Form.Group>
 
-            {/* Avatar */}
-            <Form.Group className="mb-4">
-              <Form.Label className="d-block text-center fw-semibold">
+            <Form.Group className="mb-4 text-center">
+              <Form.Label className="fw-semibold">
                 Selecciona tu Avatar
               </Form.Label>
               <Row className="justify-content-center mt-3">
@@ -167,14 +223,13 @@ const Registro = () => {
               </Row>
             </Form.Group>
 
-            {/* Términos */}
             <Form.Group className="mb-4">
               <Form.Check
                 type="checkbox"
                 name="aceptaTerminos"
-                label="Leo y acepto los términos y condiciones"
                 checked={formData.aceptaTerminos}
                 onChange={handleChange}
+                label="Leo y acepto los términos y condiciones"
                 required
               />
             </Form.Group>
@@ -183,8 +238,23 @@ const Registro = () => {
               variant="success"
               type="submit"
               className="w-100 py-2 fw-bold"
+              disabled={loading}
             >
-              <FaThumbsUp className="me-2" /> Guardar
+              {loading ? (
+                <>
+                  <Spinner
+                    as="span"
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  />
+                  Registrando...
+                </>
+              ) : (
+                <>
+                  <FaThumbsUp className="me-2" /> Guardar
+                </>
+              )}
             </Button>
           </Form>
         </Col>
